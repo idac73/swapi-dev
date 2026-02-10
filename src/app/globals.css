@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 40 33% 96%;
+  --foreground: 20 14% 16%;
+  --primary: 20 14% 16%;
+  --primary-foreground: 40 33% 96%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 94%;
+  --muted-foreground: 215 16% 45%;
+  --accent: 35 80% 60%;
+  --accent-foreground: 20 14% 16%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 20 12% 88%;
+  --input: 20 12% 88%;
+  --ring: 20 14% 16%;
+  --radius: 0.75rem;
+}
+
+body {
+  @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+}
