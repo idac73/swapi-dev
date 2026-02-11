@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { selectResolvedSettings } from "@/store/selectors";
-import { setBgColor, setFields, type SwapiType } from "@/store/customizationSlice";
+import { setBgColor, setFields, setGlobalSettings, type SwapiType } from "@/store/customizationSlice";
 
 const fetchSwapi = async (url: string) => {
   const response = await fetch(url);
@@ -20,13 +19,13 @@ const fetchSwapi = async (url: string) => {
 
 const baseUrlByType: Record<SwapiType, string> = {
   starships: "https://swapi.dev/api/starships/",
-  species: "https://swapi.dev/api/species/"
+  species: "https://swapi.dev/api/species/",
 };
 
 const excludedFields = new Set(["name", "url", "created", "edited"]);
 
 const isSwapiType = (value: string | null): value is SwapiType =>
-  value === "starships" || value === "species";
+  value === "starships" || value === "species" || value === "vehicles";
 
 export default function EditPage() {
   const router = useRouter();
@@ -35,18 +34,18 @@ export default function EditPage() {
   const typeParam = searchParams.get("type");
   const idParam = searchParams.get("id");
   const dispatch = useAppDispatch();
-
   const type = isSwapiType(typeParam) ? typeParam : null;
   const id = idParam ?? "";
 
   const settings = useAppSelector((state) =>
-    type ? selectResolvedSettings(state, type, id) : { fields: [], bgColor: "#ffffff" }
+    type ? selectResolvedSettings(state, type, id) : { fields: [], bgColor: "#ffffff", nameColor: "#222222" }
   );
 
   const [selectedFields, setSelectedFields] = React.useState<string[]>(settings.fields);
   const [bgColor, setBgColorState] = React.useState<string>(settings.bgColor);
   const [applyFieldsToAll, setApplyFieldsToAll] = React.useState<boolean>(false);
   const [applyBgToAll, setApplyBgToAll] = React.useState<boolean>(false);
+  const [applyNameColorToAll, setApplyNameColorToAll] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     if (!type) return;
@@ -59,7 +58,6 @@ export default function EditPage() {
     queryKey: [type, id],
     queryFn: () => fetchSwapi(`${baseUrlByType[type as SwapiType]}${id}/`)
   });
-
   if (!type || !id) {
     return (
       <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#fdf6e3,_#f4efe2_40%,_#f1ede4_100%)] p-8">
@@ -81,21 +79,17 @@ export default function EditPage() {
       </main>
     );
   }
-
   if (detailQuery.isLoading) {
     return <div className="p-8 text-lg">Loading card details...</div>;
   }
-
   if (detailQuery.error || !detailQuery.data) {
     return (
       <div className="p-8 text-lg text-red-600">Failed to load card details.</div>
     );
   }
-
   const availableFields = Object.keys(detailQuery.data).filter(
     (field) => !excludedFields.has(field)
   );
-
   const toggleField = (field: string) => {
     setSelectedFields((prev) =>
       prev.includes(field) ? prev.filter((item) => item !== field) : [...prev, field]
@@ -103,22 +97,32 @@ export default function EditPage() {
   };
 
   const handleSave = () => {
-    dispatch(
-      setFields({
-        type,
-        id,
-        fields: selectedFields,
-        applyToAll: applyFieldsToAll
-      })
-    );
-    dispatch(
-      setBgColor({
-        type,
-        id,
-        bgColor,
-        applyToAll: applyBgToAll
-      })
-    );
+    if (applyFieldsToAll && applyBgToAll && applyNameColorToAll) {
+      dispatch(
+        setGlobalSettings({
+          type,
+          fields: selectedFields,
+          bgColor
+        })
+      );
+    } else {
+      dispatch(
+        setFields({
+          type,
+          id,
+          fields: selectedFields,
+          applyToAll: applyFieldsToAll
+        })
+      );
+      dispatch(
+        setBgColor({
+          type,
+          id,
+          bgColor,
+          applyToAll: applyBgToAll
+        })
+      );
+    }
 
     queryClient.invalidateQueries({ queryKey: ["starships"] });
     queryClient.invalidateQueries({ queryKey: ["species"] });
@@ -138,7 +142,6 @@ export default function EditPage() {
             cards in the section.
           </p>
         </header>
-
         <Card>
           <CardHeader>
             <CardTitle>Visible fields</CardTitle>
@@ -157,7 +160,6 @@ export default function EditPage() {
             ))}
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>Apply field changes</CardTitle>
@@ -177,7 +179,7 @@ export default function EditPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Card background</CardTitle>
+            <CardTitle>Card background color</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <label className="flex items-center justify-between rounded-md border p-3">

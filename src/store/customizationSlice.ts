@@ -12,39 +12,45 @@ type TypeState = {
   perId: Record<string, Partial<CardSettings>>;
 };
 
-type CustomizationState = Record<SwapiType, TypeState>;
+type CustomizationState = {
+  starships: TypeState;
+  species: TypeState;
+};
+
+type SetGlobalSettingsPayload = {
+  type: SwapiType;
+  fields?: string[];
+  bgColor?: string;
+};
 
 const initialState: CustomizationState = {
   starships: {
     global: {
       fields: ["starship_class"],
-      bgColor: "#ffffff"
+      bgColor: "#ffffff",
     },
     perId: {}
   },
   species: {
     global: {
       fields: ["classification"],
-      bgColor: "#ffffff"
+      bgColor: "#ffffff",
     },
     perId: {}
-  }
+  },
 };
-
 type SetFieldsPayload = {
   type: SwapiType;
   id: string;
   fields: string[];
   applyToAll: boolean;
 };
-
 type SetBgColorPayload = {
   type: SwapiType;
   id: string;
   bgColor: string;
   applyToAll: boolean;
 };
-
 const customizationSlice = createSlice({
   name: "customization",
   initialState,
@@ -62,13 +68,34 @@ const customizationSlice = createSlice({
       const { type, id, bgColor, applyToAll } = action.payload;
       if (applyToAll) {
         state[type].global.bgColor = bgColor;
+        // Remove all perId bgColor overrides so all cards inherit the new global color
+        Object.keys(state[type].perId).forEach((cardId) => {
+          if (state[type].perId[cardId] && 'bgColor' in state[type].perId[cardId]) {
+            const { bgColor, ...rest } = state[type].perId[cardId]!;
+            // If no other overrides remain, remove the perId entry entirely
+            if (Object.keys(rest).length === 0) {
+              delete state[type].perId[cardId];
+            } else {
+              state[type].perId[cardId] = rest;
+            }
+          }
+        });
       } else {
         const existing = state[type].perId[id] ?? {};
         state[type].perId[id] = { ...existing, bgColor };
+      }
+    },
+    setGlobalSettings(state, action: PayloadAction<SetGlobalSettingsPayload>) {
+      const { type, fields, bgColor } = action.payload;
+      if (fields !== undefined) {
+        state[type].global.fields = fields;
+      }
+      if (bgColor !== undefined) {
+        state[type].global.bgColor = bgColor;
       }
     }
   }
 });
 
-export const { setFields, setBgColor } = customizationSlice.actions;
+export const { setFields, setBgColor, setGlobalSettings } = customizationSlice.actions;
 export default customizationSlice.reducer;
